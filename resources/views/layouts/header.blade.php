@@ -121,7 +121,7 @@
                         </li>
 
                         <li
-                            class="menu-item {{ request()->is('assigned_task', 'assigned_task_list', 'assigned_task/*', 'progress_report') ? 'active' : '' }}">
+                            class="menu-item {{ request()->is('assigned_task', 'assigned_task_list', 'assigned_task_view/*', 'assigned_task_edit/*', 'progress_report') ? 'active' : '' }}">
                             <a href="javascript:void(0);" class="menu-link menu-toggle">
                                 <i class="menu-icon tf-icons bx bx-task"></i>
                                 <div data-i18n="Layouts">Task Management</div>
@@ -380,7 +380,7 @@
                             </ul>
                         </li>
 
-                        <li class="menu-item {{ request()->is('assigned_task_list', 'assigned_task/*') ? 'active' : '' }}">
+                        <li class="menu-item {{ request()->is('assigned_task_list', 'assigned_task_view/*') ? 'active' : '' }}">
                             <a href="{{ route('assigned_task_list') }}" class="menu-link">
                                 <i class="menu-icon tf-icons bx bx-task"></i>
                                 <div data-i18n="Layouts">My Tasks</div>

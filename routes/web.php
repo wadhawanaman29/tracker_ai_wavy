@@ -119,9 +119,9 @@ Route::group(['middleware' => 'DisbleBackBtn'], function () {
 
         Route::get('assigned_task', [AssignedTaskController::class, 'assignedTask'])->name('assigned_task')->middleware('CheckRole:0');
         Route::get('assigned_task_list', [AssignedTaskController::class, 'assignedTaskList'])->name('assigned_task_list')->middleware('CheckRole:0,1');
-        Route::get('assigned_task/show/{id}', [AssignedTaskController::class, 'show'])->name('assigned.view')->middleware('CheckRole:0,1');
+        Route::get('assigned_task_view/{id}', [AssignedTaskController::class, 'show'])->name('assigned.view')->middleware('CheckRole:0,1');
         Route::post('assigned_task', [AssignedTaskController::class, 'store'])->name('assigned_task.store')->middleware('CheckRole:0');
-        Route::get('assigned_task/{id}/edit', [AssignedTaskController::class, 'edit'])->name('assigned.edit')->middleware('CheckRole:0');
+        Route::get('assigned_task_edit/{id}', [AssignedTaskController::class, 'edit'])->name('assigned.edit')->middleware('CheckRole:0');
         Route::put('assigned_task/{id}', [AssignedTaskController::class, 'update'])->name('assigned_task.update')->middleware('CheckRole:0');
         Route::get('progress_report', [AssignedTaskController::class, 'progress_report'])->name('progress_report')->middleware('CheckRole:0');
         Route::put('assigned_task/{id}/status', [AssignedTaskController::class, 'updateStatus'])->name('assigned.status.update')->middleware('CheckRole:0,1');
