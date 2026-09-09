@@ -131,7 +131,7 @@
         <div class="col-md-6 mb-3">
             <div class="card h-100">
                 <div class="card-header">
-                    <h6 class="mb-0">Status Breakdown</h6>
+                    <h6 class="mb-0"><i class="bx bx-pie-chart-alt-2"></i> Status Breakdown</h6>
                 </div>
                 <div class="card-body">
                     <div style="position:relative;height:260px;">
@@ -144,7 +144,7 @@
         <div class="col-md-6 mb-3">
             <div class="card h-100">
                 <div class="card-header">
-                    <h6 class="mb-0">Delayed/Overdue by Employee</h6>
+                    <h6 class="mb-0"><i class="bx bx-user-x"></i> Delayed/Overdue by Employee</h6>
                 </div>
                 <div class="card-body">
                     @if (count($employeeChartLabels) > 0)
@@ -165,7 +165,7 @@
         @php $p = collect($projectSummary)->first(); @endphp
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">Project Progress — {{ $p['name'] }}</h5>
+                <h5 class="mb-0"><i class="bx bx-briefcase"></i> Project Progress — {{ $p['name'] }}</h5>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
@@ -210,7 +210,7 @@
     @elseif (count($projectSummary) > 0)
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">Project Progress</h5>
+                <h5 class="mb-0"><i class="bx bx-briefcase"></i> Project Progress</h5>
             </div>
             <div class="table-responsive text-nowrap">
                 <table class="table table-hover">
@@ -258,7 +258,7 @@
     @endif
 
     <div class="card">
-        <h5 class="card-header">Task Detail</h5>
+        <h5 class="card-header"><i class="bx bx-list-check"></i> Task Detail</h5>
         <div class="table-responsive text-nowrap">
             <table class="table table-striped">
                 <thead>

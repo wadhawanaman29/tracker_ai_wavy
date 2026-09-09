@@ -7,8 +7,12 @@
     </h4>
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-9 col-lg-8">
             <div class="card mb-4">
+                <h5 class="card-header">
+                    <i class="bx {{ $task ? 'bx-edit-alt' : 'bx-plus-circle' }} me-1"></i>
+                    {{ $task ? 'Edit Task Details' : 'Task Details' }}
+                </h5>
                 <div class="card-body">
 
                     <form action="{{ $task ? route('assigned_task.update', $task->id) : route('assigned_task.store') }}"
@@ -18,70 +22,86 @@
                             @method('PUT')
                         @endif
 
-                        <div class="form-group mb-3">
-                            <label for="project_id" class="form-label">Project</label>
-                            <select name="project_id" id="project_id"
-                                class="form-select {{ $errors->has('project_id') ? 'is-invalid' : '' }}">
-                                <option value="">Select</option>
-                                @foreach ($projects as $project)
-                                    <option value="{{ $project->id }}"
-                                        {{ old('project_id', $task->project_id ?? '') == $project->id ? 'selected' : '' }}>
-                                        {{ $project->project_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if ($errors->has('project_id'))
-                                <span class="invalid-feedback text-danger" role="alert">
-                                    <strong>{{ $errors->first('project_id') }}</strong>
-                                </span>
-                            @endif
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="project_id" class="form-label"><i class="bx bx-briefcase"></i>
+                                        Project</label>
+                                    <select name="project_id" id="project_id"
+                                        class="form-select {{ $errors->has('project_id') ? 'is-invalid' : '' }}">
+                                        <option value="">Select</option>
+                                        @foreach ($projects as $project)
+                                            <option value="{{ $project->id }}"
+                                                {{ old('project_id', $task->project_id ?? '') == $project->id ? 'selected' : '' }}>
+                                                {{ $project->project_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if ($errors->has('project_id'))
+                                        <span class="invalid-feedback text-danger" role="alert">
+                                            <strong>{{ $errors->first('project_id') }}</strong>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="assigned_to" class="form-label"><i class="bx bx-user"></i> Assign
+                                        To</label>
+                                    <select name="assigned_to" id="assigned_to"
+                                        class="form-select {{ $errors->has('assigned_to') ? 'is-invalid' : '' }}">
+                                        <option value="">Select Employee</option>
+                                        @foreach ($employees as $employee)
+                                            <option value="{{ $employee->id }}"
+                                                {{ old('assigned_to', $task->assigned_to ?? '') == $employee->id ? 'selected' : '' }}>
+                                                {{ $employee->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if ($errors->has('assigned_to'))
+                                        <span class="invalid-feedback text-danger" role="alert">
+                                            <strong>{{ $errors->first('assigned_to') }}</strong>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group mb-3">
+                                    <label for="title" class="form-label"><i class="bx bx-task"></i> Title</label>
+                                    <input type="text" name="title" id="title"
+                                        class="form-control {{ $errors->has('title') ? 'is-invalid' : '' }}"
+                                        value="{{ old('title', $task->title ?? '') }}" placeholder="Task title">
+                                    @if ($errors->has('title'))
+                                        <span class="invalid-feedback text-danger" role="alert">
+                                            <strong>{{ $errors->first('title') }}</strong>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="due_date" class="form-label"><i class="bx bx-calendar"></i> Due
+                                        Date</label>
+                                    <input type="date" name="due_date" id="due_date"
+                                        class="form-control {{ $errors->has('due_date') ? 'is-invalid' : '' }}"
+                                        value="{{ old('due_date', isset($task->due_date) ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : '') }}">
+                                    @if ($errors->has('due_date'))
+                                        <span class="invalid-feedback text-danger" role="alert">
+                                            <strong>{{ $errors->first('due_date') }}</strong>
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="assigned_to" class="form-label">Assign To</label>
-                            <select name="assigned_to" id="assigned_to"
-                                class="form-select {{ $errors->has('assigned_to') ? 'is-invalid' : '' }}">
-                                <option value="">Select Employee</option>
-                                @foreach ($employees as $employee)
-                                    <option value="{{ $employee->id }}"
-                                        {{ old('assigned_to', $task->assigned_to ?? '') == $employee->id ? 'selected' : '' }}>
-                                        {{ $employee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if ($errors->has('assigned_to'))
-                                <span class="invalid-feedback text-danger" role="alert">
-                                    <strong>{{ $errors->first('assigned_to') }}</strong>
-                                </span>
-                            @endif
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="title" class="form-label">Title</label>
-                            <input type="text" name="title" id="title"
-                                class="form-control {{ $errors->has('title') ? 'is-invalid' : '' }}"
-                                value="{{ old('title', $task->title ?? '') }}" placeholder="Task title">
-                            @if ($errors->has('title'))
-                                <span class="invalid-feedback text-danger" role="alert">
-                                    <strong>{{ $errors->first('title') }}</strong>
-                                </span>
-                            @endif
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="due_date" class="form-label">Due Date</label>
-                            <input type="date" name="due_date" id="due_date"
-                                class="form-control {{ $errors->has('due_date') ? 'is-invalid' : '' }}"
-                                value="{{ old('due_date', isset($task->due_date) ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : '') }}">
-                            @if ($errors->has('due_date'))
-                                <span class="invalid-feedback text-danger" role="alert">
-                                    <strong>{{ $errors->first('due_date') }}</strong>
-                                </span>
-                            @endif
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="description" class="form-label">Description</label>
+                            <label for="description" class="form-label"><i class="bx bx-align-left"></i>
+                                Description</label>
                             <textarea name="description" id="description" cols="80" rows="10"
                                 class="form-control {{ $errors->has('description') ? 'is-invalid' : '' }}"
                                 placeholder="Task details...">{{ old('description', $task->description ?? '') }}</textarea>
@@ -93,8 +113,10 @@
                         </div>
 
                         <div class="form-group">
-                            <input class="btn btn-outline-primary" type="submit"
-                                value="{{ $task ? 'Update Task' : 'Create Task' }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bx {{ $task ? 'bx-save' : 'bx-plus' }} me-1"></i>
+                                {{ $task ? 'Update Task' : 'Create Task' }}
+                            </button>
                             <a href="{{ route('assigned_task_list') }}" class="btn btn-outline-secondary">Cancel</a>
                         </div>
                     </form>

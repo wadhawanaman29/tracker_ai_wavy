@@ -2,13 +2,67 @@
 
 @php
     $statusMeta = [
-        'pending' => ['label' => 'Pending', 'header' => 'bg-label-secondary', 'icon' => 'bx-list-ul'],
-        'in_progress' => ['label' => 'In Progress', 'header' => 'bg-label-primary', 'icon' => 'bx-loader-circle'],
-        'on_hold' => ['label' => 'On Hold', 'header' => 'bg-label-warning', 'icon' => 'bx-pause-circle'],
-        'completed' => ['label' => 'Completed', 'header' => 'bg-label-success', 'icon' => 'bx-check-circle'],
-        'cancelled' => ['label' => 'Cancelled', 'header' => 'bg-label-dark', 'icon' => 'bx-x-circle'],
+        'pending' => ['label' => 'Pending', 'badge' => 'bg-label-secondary', 'icon' => 'bx-list-ul', 'color' => '#8592a3'],
+        'in_progress' => ['label' => 'In Progress', 'badge' => 'bg-label-primary', 'icon' => 'bx-loader-circle', 'color' => '#696cff'],
+        'on_hold' => ['label' => 'On Hold', 'badge' => 'bg-label-warning', 'icon' => 'bx-pause-circle', 'color' => '#ffab00'],
+        'completed' => ['label' => 'Completed', 'badge' => 'bg-label-success', 'icon' => 'bx-check-circle', 'color' => '#71dd37'],
+        'cancelled' => ['label' => 'Cancelled', 'badge' => 'bg-label-dark', 'icon' => 'bx-x-circle', 'color' => '#233446'],
     ];
+
+    $avatarColors = ['primary', 'success', 'info', 'warning', 'danger'];
 @endphp
+
+<style>
+    .kanban-column-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 6px rgba(67, 89, 113, 0.08);
+    }
+
+    .kanban-column-header {
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .kanban-column-body {
+        background-color: #f7f8fa;
+        border-bottom-left-radius: 0.75rem;
+        border-bottom-right-radius: 0.75rem;
+    }
+
+    .kanban-card {
+        border: none !important;
+        border-left: 3px solid var(--kanban-accent, #8592a3) !important;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(67, 89, 113, 0.1);
+        cursor: grab;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(67, 89, 113, 0.18);
+    }
+
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+
+    .kanban-card .card-body {
+        padding: 0.9rem 1rem;
+    }
+
+    .kanban-empty {
+        border: 1px dashed rgba(67, 89, 113, 0.25);
+        border-radius: 0.5rem;
+        padding: 1.5rem 0.5rem;
+    }
+
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+</style>
 
 <div class="container-xxl flex-grow-1 container-p-y">
     <div class="d-flex justify-content-between align-items-center flex-wrap py-3 mb-2">
@@ -74,22 +128,23 @@
         @foreach ($statuses as $status)
             @php $meta = $statusMeta[$status]; @endphp
             <div class="col-lg col-md-6">
-                <div class="card h-100">
-                    <div class="card-header {{ $meta['header'] }} d-flex justify-content-between align-items-center">
+                <div class="card kanban-column-card h-100">
+                    <div
+                        class="card-header kanban-column-header {{ $meta['badge'] }} d-flex justify-content-between align-items-center">
                         <span class="fw-semibold">
                             <i class="bx {{ $meta['icon'] }} me-1"></i> {{ $meta['label'] }}
                         </span>
-                        <span class="badge bg-white text-dark">{{ $tasksByStatus[$status]->count() }}</span>
+                        <span class="badge rounded-pill bg-white text-dark">{{ $tasksByStatus[$status]->count() }}</span>
                     </div>
                     @if (($doneColumnCapped[$status] ?? false))
                         <div class="px-3 pt-2 small text-muted">
-                            Showing last {{ $doneLookbackDays }} days only.
+                            <i class="bx bx-info-circle"></i> Showing last {{ $doneLookbackDays }} days only.
                             @if ($isAdmin)
                                 <a href="{{ route('progress_report') }}">View full history</a>
                             @endif
                         </div>
                     @endif
-                    <div class="card-body kanban-column-body" data-status="{{ $status }}"
+                    <div class="card-body kanban-column-body p-2" data-status="{{ $status }}"
                         style="min-height:200px; max-height:65vh; overflow-y:auto;">
                         @forelse ($tasksByStatus[$status] as $t)
                             @php
@@ -105,30 +160,48 @@
                                 } else {
                                     $dueBadgeClass = 'bg-label-success';
                                 }
+
+                                $assigneeName = optional($t->assignedTo)->name;
+                                $initials = $assigneeName
+                                    ? collect(explode(' ', trim($assigneeName)))->map(fn($w) => mb_substr($w, 0, 1))->take(2)->implode('')
+                                    : '?';
+                                $avatarColor = $avatarColors[$t->assigned_to % count($avatarColors)];
                             @endphp
-                            <div class="card mb-3 kanban-card" draggable="true" data-task-id="{{ $t->id }}">
-                                <div class="card-body p-3">
+                            <div class="card mb-2 kanban-card" draggable="true" data-task-id="{{ $t->id }}"
+                                style="--kanban-accent: {{ $meta['color'] }};">
+                                <div class="card-body">
                                     <a href="{{ route('assigned.view', $t->id) }}"
-                                        class="fw-semibold text-body d-block mb-1">
+                                        class="fw-semibold text-body d-block mb-2">
                                         {{ $t->title }}
                                     </a>
 
-                                    <div class="mb-2">
-                                        <span class="badge bg-label-info">{{ optional($t->project)->project_name ?? '-' }}</span>
+                                    <div class="mb-2 d-flex flex-wrap gap-1">
+                                        <span class="badge bg-label-info">
+                                            <i class="bx bx-briefcase"></i>
+                                            {{ optional($t->project)->project_name ?? '-' }}
+                                        </span>
                                         <span class="badge {{ $dueBadgeClass }}">
-                                            Due {{ $dueDate->format('d M') }}
+                                            <i class="bx bx-calendar"></i>
+                                            {{ $dueDate->format('d M') }}
                                         </span>
                                     </div>
 
                                     @if ($isAdmin)
-                                        <div class="small text-muted mb-2">
-                                            <i class="bx bx-user"></i> {{ optional($t->assignedTo)->name ?? '-' }}
+                                        <div class="d-flex align-items-center gap-2 mt-2">
+                                            <div class="avatar avatar-xs">
+                                                <span
+                                                    class="avatar-initial rounded-circle bg-label-{{ $avatarColor }}">{{ $initials }}</span>
+                                            </div>
+                                            <span class="small text-muted">{{ $assigneeName ?? 'Unassigned' }}</span>
                                         </div>
                                     @endif
                                 </div>
                             </div>
                         @empty
-                            <p class="text-muted text-center small mb-0">No tasks</p>
+                            <div class="kanban-empty text-center text-muted small">
+                                <i class="bx bx-inbox fs-4 d-block mb-1"></i>
+                                No tasks
+                            </div>
                         @endforelse
                     </div>
                 </div>
@@ -146,6 +219,7 @@
             new Sortable(list, {
                 group: 'tasks',
                 animation: 150,
+                ghostClass: 'sortable-ghost',
                 onEnd: async function(evt) {
                     if (evt.from === evt.to) {
                         return;
