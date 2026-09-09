@@ -1,8 +1,14 @@
--- Manual DB change for the Task/Subtask management feature.
+-- Manual DB change for the Task management feature (Project -> Task only,
+-- no subtasks).
 -- Import this file directly via phpMyAdmin (Import tab) on the `tracker`
 -- database, the same way other schema changes are applied to this project.
 -- Mirrors database/migrations/2026_09_09_100000_create_tasks_table.php and
 -- database/migrations/2026_09_09_100001_create_task_status_logs_table.php.
+--
+-- If you already imported the earlier version of this file (the one with a
+-- `parent_id` column), do NOT re-run this file — run this instead:
+--   ALTER TABLE `tasks` DROP FOREIGN KEY `tasks_parent_id_foreign`;
+--   ALTER TABLE `tasks` DROP COLUMN `parent_id`;
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -17,7 +23,6 @@ SET time_zone = "+00:00";
 CREATE TABLE `tasks` (
   `id` bigint UNSIGNED NOT NULL,
   `project_id` bigint UNSIGNED NOT NULL,
-  `parent_id` bigint UNSIGNED DEFAULT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `assigned_to` bigint UNSIGNED NOT NULL,
@@ -52,7 +57,6 @@ CREATE TABLE `task_status_logs` (
 ALTER TABLE `tasks`
   ADD PRIMARY KEY (`id`),
   ADD KEY `tasks_project_id_foreign` (`project_id`),
-  ADD KEY `tasks_parent_id_foreign` (`parent_id`),
   ADD KEY `tasks_assigned_to_foreign` (`assigned_to`),
   ADD KEY `tasks_assigned_by_foreign` (`assigned_by`);
 
@@ -77,7 +81,6 @@ ALTER TABLE `task_status_logs`
 
 ALTER TABLE `tasks`
   ADD CONSTRAINT `tasks_project_id_foreign` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
-  ADD CONSTRAINT `tasks_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `tasks_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `tasks_assigned_by_foreign` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`);
 

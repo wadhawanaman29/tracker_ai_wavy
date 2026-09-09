@@ -34,10 +34,8 @@ class TaskAssignedNotification extends Notification
      */
     public function toArray($notifiable)
     {
-        $label = $this->task->parent_id ? 'Subtask' : 'Task';
-
         return [
-            'message' => "New {$label} assigned: {$this->task->title}",
+            'message' => "New task assigned: {$this->task->title}",
             'task_id' => $this->task->id,
             'type' => 'task_assigned',
         ];

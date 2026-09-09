@@ -46,7 +46,7 @@ class AssignedTaskController extends Controller
     }
 
     /**
-     * Create a task, or a subtask when parent_id is present (admin only).
+     * Create a task (admin only).
      */
     public function store(Request $request)
     {
@@ -56,12 +56,10 @@ class AssignedTaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'due_date' => 'required|date',
-            'parent_id' => 'nullable|exists:tasks,id',
         ]);
 
         $task = Task::create([
             'project_id' => $validated['project_id'],
-            'parent_id' => $validated['parent_id'] ?? null,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'assigned_to' => $validated['assigned_to'],
@@ -78,11 +76,6 @@ class AssignedTaskController extends Controller
         ]);
 
         $this->notifyAssignee($task);
-
-        if ($task->parent_id) {
-            return redirect()->route('assigned.view', $task->parent_id)
-                ->with('success', 'Subtask added successfully.');
-        }
 
         return redirect()->route('assigned_task_list')->with('success', 'Task created successfully.');
     }
@@ -114,19 +107,19 @@ class AssignedTaskController extends Controller
             $this->notifyAssignee($id);
         }
 
-        return redirect()->route('assigned.view', $id->parent_id ?: $id->id)
+        return redirect()->route('assigned.view', $id->id)
             ->with('success', 'Task updated successfully.');
     }
 
     /**
-     * The Kanban board. Admin sees every top-level task (optionally filtered),
-     * an employee only sees their own.
+     * The Kanban board. Admin sees every task (optionally filtered), an
+     * employee only sees their own.
      */
     public function assignedTaskList(Request $request)
     {
         $isAdmin = Auth::user()->user_type == '0';
 
-        $query = Task::whereNull('parent_id')->with(['project', 'assignedTo', 'subtasks']);
+        $query = Task::with(['project', 'assignedTo']);
 
         $selectedProjectId = $request->get('project_id', 'all');
         $selectedEmployeeId = $request->get('employee_id', 'all');
@@ -183,7 +176,7 @@ class AssignedTaskController extends Controller
     }
 
     /**
-     * Task detail: meta, subtasks, status changer, status history.
+     * Task detail: meta, status changer, status history.
      */
     public function show(Task $id)
     {
@@ -193,23 +186,18 @@ class AssignedTaskController extends Controller
             abort(403, 'You do not have access to this task.');
         }
 
-        $id->load(['project', 'assignedTo', 'assignedBy', 'parent', 'statusLogs.changedBy']);
-
-        $subtasks = $id->subtasks()->with('assignedTo')->orderBy('due_date', 'asc')->get();
+        $id->load(['project', 'assignedTo', 'assignedBy', 'statusLogs.changedBy']);
 
         return view('tasks.show', [
             'task' => $id,
-            'subtasks' => $subtasks,
             'isAdmin' => $isAdmin,
-            'employees' => $isAdmin ? $this->getEmployees() : collect(),
-            'projects' => $isAdmin ? Project::orderBy('project_name')->get() : collect(),
             'statuses' => self::STATUSES,
         ]);
     }
 
     /**
-     * Move a task/subtask between statuses. Called via AJAX from the Kanban
-     * board (drag-and-drop) and the task detail page's status control.
+     * Move a task between statuses. Called via AJAX from the Kanban board
+     * (drag-and-drop) and the task detail page's status control.
      */
     public function updateStatus(Request $request, Task $id)
     {
@@ -254,35 +242,50 @@ class AssignedTaskController extends Controller
     }
 
     /**
-     * Delete a task (and its subtasks/status logs via cascading FKs).
+     * Delete a task (its status logs cascade via the FK).
      */
     public function destroy(Task $id)
     {
-        $parentId = $id->parent_id;
         $id->delete();
-
-        if ($parentId) {
-            return redirect()->route('assigned.view', $parentId)->with('success', 'Subtask deleted successfully.');
-        }
 
         return redirect()->route('assigned_task_list')->with('success', 'Task deleted successfully.');
     }
 
     /**
-     * Admin delay/on-time report across tasks and subtasks (each classified
-     * independently), for a filterable employee/project/date-range slice.
+     * Admin delay/on-time report across tasks, for a filterable
+     * employee/project/date-range slice.
      */
     public function progress_report(Request $request)
     {
         $filterType = $request->get('filter_type', 'this_month');
 
-        if ($filterType === 'custom' && $request->filled('start_date') && $request->filled('end_date')) {
-            $startDate = Carbon::parse($request->start_date)->startOfDay();
-            $endDate = Carbon::parse($request->end_date)->endOfDay();
-        } else {
-            $filterType = 'this_month';
-            $startDate = now()->startOfMonth();
-            $endDate = now()->endOfMonth();
+        switch ($filterType) {
+            case 'last_month':
+                $startDate = now()->subMonthNoOverflow()->startOfMonth();
+                $endDate = now()->subMonthNoOverflow()->endOfMonth();
+                break;
+            case 'this_year':
+                $startDate = now()->startOfYear();
+                $endDate = now()->endOfYear();
+                break;
+            case 'last_year':
+                $startDate = now()->subYear()->startOfYear();
+                $endDate = now()->subYear()->endOfYear();
+                break;
+            case 'custom':
+                if ($request->filled('start_date') && $request->filled('end_date')) {
+                    $startDate = Carbon::parse($request->start_date)->startOfDay();
+                    $endDate = Carbon::parse($request->end_date)->endOfDay();
+                    break;
+                }
+                $filterType = 'this_month';
+                // fall through to the default range below
+            case 'this_month':
+            default:
+                $filterType = 'this_month';
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+                break;
         }
 
         $selectedEmployeeId = $request->get('employee_id', 'all');
@@ -341,7 +344,6 @@ class AssignedTaskController extends Controller
             }
 
             $rows[] = [
-                'type' => $task->parent_id ? 'Subtask' : 'Task',
                 'title' => $task->title,
                 'project' => optional($task->project)->project_name ?? '-',
                 'assignee' => optional($task->assignedTo)->name ?? '-',

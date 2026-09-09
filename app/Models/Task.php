@@ -15,7 +15,6 @@ class Task extends Model
 
     protected $fillable = [
         'project_id',
-        'parent_id',
         'title',
         'description',
         'assigned_to',
@@ -43,16 +42,6 @@ class Task extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
-    }
-
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(Task::class, 'parent_id');
-    }
-
-    public function subtasks(): HasMany
-    {
-        return $this->hasMany(Task::class, 'parent_id');
     }
 
     public function statusLogs(): HasMany

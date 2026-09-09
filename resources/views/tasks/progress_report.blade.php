@@ -58,6 +58,12 @@
                     <select name="filter_type" id="filterType" class="form-select">
                         <option value="this_month" {{ $filterType == 'this_month' ? 'selected' : '' }}>This Month
                         </option>
+                        <option value="last_month" {{ $filterType == 'last_month' ? 'selected' : '' }}>Last Month
+                        </option>
+                        <option value="this_year" {{ $filterType == 'this_year' ? 'selected' : '' }}>This Year
+                        </option>
+                        <option value="last_year" {{ $filterType == 'last_year' ? 'selected' : '' }}>Last Year
+                        </option>
                         <option value="custom" {{ $filterType == 'custom' ? 'selected' : '' }}>Custom Range</option>
                     </select>
                 </div>

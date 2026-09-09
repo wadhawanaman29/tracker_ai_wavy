@@ -17,9 +17,6 @@ return new class extends Migration
             $table->unsignedBigInteger('project_id');
             $table->foreign('project_id')->references('id')->on('project');
 
-            $table->unsignedBigInteger('parent_id')->nullable();
-            $table->foreign('parent_id')->references('id')->on('tasks')->onDelete('cascade');
-
             $table->string('title');
             $table->text('description')->nullable();
 
