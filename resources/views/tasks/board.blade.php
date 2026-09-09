@@ -105,9 +105,6 @@
                                 } else {
                                     $dueBadgeClass = 'bg-label-success';
                                 }
-
-                                $subtaskTotal = $t->subtasks->count();
-                                $subtaskDone = $t->subtasks->where('status', 'completed')->count();
                             @endphp
                             <div class="card mb-3 kanban-card" draggable="true" data-task-id="{{ $t->id }}">
                                 <div class="card-body p-3">
@@ -126,18 +123,6 @@
                                     @if ($isAdmin)
                                         <div class="small text-muted mb-2">
                                             <i class="bx bx-user"></i> {{ optional($t->assignedTo)->name ?? '-' }}
-                                        </div>
-                                    @endif
-
-                                    @if ($subtaskTotal > 0)
-                                        <div class="small text-muted">
-                                            <i class="bx bx-list-check"></i> {{ $subtaskDone }}/{{ $subtaskTotal }}
-                                            subtasks
-                                        </div>
-                                        <div class="progress mt-1" style="height:4px;">
-                                            <div class="progress-bar bg-success"
-                                                style="width: {{ $subtaskTotal ? round(($subtaskDone / $subtaskTotal) * 100) : 0 }}%">
-                                            </div>
                                         </div>
                                     @endif
                                 </div>

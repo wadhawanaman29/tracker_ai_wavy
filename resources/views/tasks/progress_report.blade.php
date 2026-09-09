@@ -90,7 +90,7 @@
             <div class="attendance-card working-card">
                 <p class="attendance-title">Total</p>
                 <h2 class="attendance-count">{{ $totalTasks }}</h2>
-                <span class="attendance-bottom-text">Tasks + Subtasks</span>
+                <span class="attendance-bottom-text">All Tasks</span>
             </div>
         </div>
 
@@ -264,7 +264,6 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Type</th>
                         <th>Title</th>
                         <th>Project</th>
                         <th>Assignee</th>
@@ -278,7 +277,6 @@
                     @forelse ($rows as $i => $row)
                         <tr>
                             <td>{{ $i + 1 }}</td>
-                            <td>{{ $row['type'] }}</td>
                             <td>{{ $row['title'] }}</td>
                             <td>{{ $row['project'] }}</td>
                             <td>{{ $row['assignee'] }}</td>
@@ -290,7 +288,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center">No tasks found for the selected filters</td>
+                            <td colspan="8" class="text-center">No tasks found for the selected filters</td>
                         </tr>
                     @endforelse
                 </tbody>

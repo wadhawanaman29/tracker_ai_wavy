@@ -30,11 +30,6 @@
             <div>
                 <h5 class="mb-1">{{ $task->title }}</h5>
                 <span class="badge {{ $statusBadge[$task->status] }}">{{ $statusLabels[$task->status] }}</span>
-                @if ($task->parent_id)
-                    <span class="badge bg-label-info">Subtask of
-                        <a href="{{ route('assigned.view', $task->parent_id) }}">{{ optional($task->parent)->title }}</a>
-                    </span>
-                @endif
             </div>
 
             @if ($isAdmin)
@@ -92,76 +87,6 @@
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Subtasks</h5>
-            @if ($isAdmin)
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#addSubtaskModal">
-                    <i class="bx bx-plus"></i> Add Subtask
-                </button>
-            @endif
-        </div>
-        <div class="table-responsive text-nowrap">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Title</th>
-                        <th>Assigned To</th>
-                        <th>Due Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($subtasks as $i => $sub)
-                        @php
-                            $subCanEdit = $isAdmin || (int) $sub->assigned_to === (int) Auth::id();
-                        @endphp
-                        <tr>
-                            <td>{{ $i + 1 }}</td>
-                            <td><a href="{{ route('assigned.view', $sub->id) }}">{{ $sub->title }}</a></td>
-                            <td>{{ optional($sub->assignedTo)->name ?? '-' }}</td>
-                            <td>{{ \Carbon\Carbon::parse($sub->due_date)->format('d M Y') }}</td>
-                            <td>
-                                <select class="form-select form-select-sm subtask-status-select"
-                                    data-task-id="{{ $sub->id }}" {{ $subCanEdit ? '' : 'disabled' }}>
-                                    @foreach ($statuses as $status)
-                                        <option value="{{ $status }}"
-                                            {{ $sub->status == $status ? 'selected' : '' }}>
-                                            {{ $statusLabels[$status] }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td>
-                                @if ($isAdmin)
-                                    <a href="{{ route('assigned.edit', $sub->id) }}"><i
-                                            class="bx bx-edit-alt me-1"></i></a>
-                                    <a href="javascript:void(0);" class="delete-btn"
-                                        data-form-id="deleteSubtaskForm{{ $sub->id }}">
-                                        <i class="bx bx-trash me-1"></i>
-                                    </a>
-                                    <form id="deleteSubtaskForm{{ $sub->id }}"
-                                        action="{{ route('assigned_task_delete', $sub->id) }}" method="POST"
-                                        style="display:none;">
-                                        @csrf
-                                        @method('DELETE')
-                                    </form>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center">No subtasks yet</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <div class="card">
         <h5 class="card-header">Status History</h5>
         <div class="table-responsive text-nowrap">
@@ -193,71 +118,6 @@
     </div>
 </div>
 
-@if ($isAdmin)
-    <div class="modal fade" id="addSubtaskModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form action="{{ route('assigned_task.store') }}" method="post">
-                    @csrf
-                    <input type="hidden" name="parent_id" value="{{ $task->id }}">
-
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add Subtask</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="form-group mb-3">
-                            <label class="form-label">Project</label>
-                            <select name="project_id" class="form-select" required>
-                                @foreach ($projects as $project)
-                                    <option value="{{ $project->id }}"
-                                        {{ $project->id == $task->project_id ? 'selected' : '' }}>
-                                        {{ $project->project_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label">Title</label>
-                            <input type="text" name="title" class="form-control" required>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label">Assign To</label>
-                            <select name="assigned_to" class="form-select" required>
-                                <option value="">Select Employee</option>
-                                @foreach ($employees as $employee)
-                                    <option value="{{ $employee->id }}"
-                                        {{ $employee->id == $task->assigned_to ? 'selected' : '' }}>
-                                        {{ $employee->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label">Due Date</label>
-                            <input type="date" name="due_date" class="form-control" required>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" class="form-control" rows="3"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Subtask</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-@endif
-
 @include('layouts.footer')
 
 <script>
@@ -277,11 +137,5 @@
     document.getElementById('updateTaskStatusBtn')?.addEventListener('click', function() {
         const select = document.getElementById('taskStatusSelect');
         updateTaskStatus(this.dataset.taskId, select.value);
-    });
-
-    document.querySelectorAll('.subtask-status-select').forEach(function(select) {
-        select.addEventListener('change', function() {
-            updateTaskStatus(this.dataset.taskId, this.value);
-        });
     });
 </script>
