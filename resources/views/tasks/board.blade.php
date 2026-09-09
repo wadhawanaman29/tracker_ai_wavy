@@ -81,8 +81,16 @@
                         </span>
                         <span class="badge bg-white text-dark">{{ $tasksByStatus[$status]->count() }}</span>
                     </div>
+                    @if (($doneColumnCapped[$status] ?? false))
+                        <div class="px-3 pt-2 small text-muted">
+                            Showing last {{ $doneLookbackDays }} days only.
+                            @if ($isAdmin)
+                                <a href="{{ route('progress_report') }}">View full history</a>
+                            @endif
+                        </div>
+                    @endif
                     <div class="card-body kanban-column-body" data-status="{{ $status }}"
-                        style="min-height:400px;">
+                        style="min-height:200px; max-height:65vh; overflow-y:auto;">
                         @forelse ($tasksByStatus[$status] as $t)
                             @php
                                 $dueDate = \Carbon\Carbon::parse($t->due_date);

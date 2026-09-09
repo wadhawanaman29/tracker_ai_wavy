@@ -200,7 +200,6 @@
                 <form action="{{ route('assigned_task.store') }}" method="post">
                     @csrf
                     <input type="hidden" name="parent_id" value="{{ $task->id }}">
-                    <input type="hidden" name="project_id" value="{{ $task->project_id }}">
 
                     <div class="modal-header">
                         <h5 class="modal-title">Add Subtask</h5>
@@ -208,6 +207,18 @@
                     </div>
 
                     <div class="modal-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Project</label>
+                            <select name="project_id" class="form-select" required>
+                                @foreach ($projects as $project)
+                                    <option value="{{ $project->id }}"
+                                        {{ $project->id == $task->project_id ? 'selected' : '' }}>
+                                        {{ $project->project_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="form-group mb-3">
                             <label class="form-label">Title</label>
                             <input type="text" name="title" class="form-control" required>

@@ -16,6 +16,11 @@ class AssignedTaskController extends Controller
 {
     private const STATUSES = ['pending', 'in_progress', 'on_hold', 'completed', 'cancelled'];
 
+    // Keeps the live Kanban board's Completed/Cancelled columns from growing
+    // unbounded as history piles up; the Delay Report has the full history.
+    private const BOARD_DONE_LOOKBACK_DAYS = 30;
+    private const BOARD_DONE_LIMIT = 50;
+
     /**
      * Show the create-task form (admin only).
      */
@@ -139,15 +144,37 @@ class AssignedTaskController extends Controller
 
         $tasks = $query->orderBy('due_date', 'asc')->get();
 
+        // Pending/in-progress/on-hold are naturally bounded by current
+        // workload, but completed/cancelled tasks accumulate forever — cap
+        // the live board to a recent window so a column can't grow into
+        // hundreds of stale cards (full history is in the Delay Report).
+        $doneCutoff = now()->subDays(self::BOARD_DONE_LOOKBACK_DAYS);
+
         $tasksByStatus = [];
+        $doneColumnCapped = [];
         foreach (self::STATUSES as $status) {
-            $tasksByStatus[$status] = $tasks->where('status', $status)->values();
+            $statusTasks = $tasks->where('status', $status);
+
+            if (in_array($status, ['completed', 'cancelled'], true)) {
+                $recentTasks = $statusTasks
+                    ->filter(fn ($t) => $t->updated_at && $t->updated_at->gte($doneCutoff))
+                    ->sortByDesc('updated_at');
+
+                $doneColumnCapped[$status] = $recentTasks->count() > self::BOARD_DONE_LIMIT
+                    || $statusTasks->count() > $recentTasks->count();
+
+                $statusTasks = $recentTasks->take(self::BOARD_DONE_LIMIT);
+            }
+
+            $tasksByStatus[$status] = $statusTasks->values();
         }
 
         return view('tasks.board', [
             'isAdmin' => $isAdmin,
             'statuses' => self::STATUSES,
             'tasksByStatus' => $tasksByStatus,
+            'doneColumnCapped' => $doneColumnCapped,
+            'doneLookbackDays' => self::BOARD_DONE_LOOKBACK_DAYS,
             'projects' => $isAdmin ? Project::orderBy('project_name')->get() : collect(),
             'employees' => $isAdmin ? $this->getEmployees() : collect(),
             'selectedProjectId' => $selectedProjectId,
@@ -175,6 +202,7 @@ class AssignedTaskController extends Controller
             'subtasks' => $subtasks,
             'isAdmin' => $isAdmin,
             'employees' => $isAdmin ? $this->getEmployees() : collect(),
+            'projects' => $isAdmin ? Project::orderBy('project_name')->get() : collect(),
             'statuses' => self::STATUSES,
         ]);
     }
