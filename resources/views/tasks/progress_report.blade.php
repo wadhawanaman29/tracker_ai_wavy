@@ -155,6 +155,102 @@
         </div>
     </div>
 
+    @if ($selectedProjectId !== 'all' && count($projectSummary) === 1)
+        @php $p = collect($projectSummary)->first(); @endphp
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Project Progress — {{ $p['name'] }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="fw-semibold">{{ $p['completed'] }} / {{ $p['total'] }} tasks completed</span>
+                    <span class="fw-semibold">{{ $p['completion_rate'] }}%</span>
+                </div>
+                <div class="progress mb-4" style="height:10px;">
+                    <div class="progress-bar bg-success" style="width: {{ $p['completion_rate'] }}%"></div>
+                </div>
+                <div class="row g-3 text-center">
+                    <div class="col">
+                        <div class="fw-bold fs-5">{{ $p['pending'] }}</div>
+                        <div class="text-muted small">Pending</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5">{{ $p['in_progress'] }}</div>
+                        <div class="text-muted small">In Progress</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5">{{ $p['on_hold'] }}</div>
+                        <div class="text-muted small">On Hold</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5 text-success">{{ $p['completed'] }}</div>
+                        <div class="text-muted small">Completed</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5 text-secondary">{{ $p['cancelled'] }}</div>
+                        <div class="text-muted small">Cancelled</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5 text-danger">{{ $p['overdue'] }}</div>
+                        <div class="text-muted small">Overdue</div>
+                    </div>
+                    <div class="col">
+                        <div class="fw-bold fs-5 text-danger">{{ $p['delayed'] }}</div>
+                        <div class="text-muted small">Delayed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @elseif (count($projectSummary) > 0)
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Project Progress</h5>
+            </div>
+            <div class="table-responsive text-nowrap">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Project</th>
+                            <th>Total</th>
+                            <th>Pending</th>
+                            <th>In Progress</th>
+                            <th>On Hold</th>
+                            <th>Completed</th>
+                            <th>Cancelled</th>
+                            <th>Overdue</th>
+                            <th>Delayed</th>
+                            <th>Completion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($projectSummary as $p)
+                            <tr>
+                                <td>{{ $loop->iteration }}</td>
+                                <td>{{ $p['name'] }}</td>
+                                <td>{{ $p['total'] }}</td>
+                                <td>{{ $p['pending'] }}</td>
+                                <td>{{ $p['in_progress'] }}</td>
+                                <td>{{ $p['on_hold'] }}</td>
+                                <td class="text-success">{{ $p['completed'] }}</td>
+                                <td>{{ $p['cancelled'] }}</td>
+                                <td class="text-danger">{{ $p['overdue'] }}</td>
+                                <td class="text-danger">{{ $p['delayed'] }}</td>
+                                <td style="min-width:100px;">
+                                    <div class="progress" style="height:6px;">
+                                        <div class="progress-bar bg-success"
+                                            style="width: {{ $p['completion_rate'] }}%"></div>
+                                    </div>
+                                    <small>{{ $p['completion_rate'] }}%</small>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     <div class="card">
         <h5 class="card-header">Task Detail</h5>
         <div class="table-responsive text-nowrap">

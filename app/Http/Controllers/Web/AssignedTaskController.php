@@ -274,6 +274,7 @@ class AssignedTaskController extends Controller
 
         $counts = ['on_time' => 0, 'delayed' => 0, 'overdue' => 0, 'not_due_yet' => 0, 'cancelled' => 0];
         $employeeDelayCounts = [];
+        $projectSummary = [];
         $rows = [];
 
         foreach ($tasks as $task) {
@@ -289,6 +290,26 @@ class AssignedTaskController extends Controller
                     ];
                 }
                 $employeeDelayCounts[$uid]['count']++;
+            }
+
+            $pid = $task->project_id;
+            if (! isset($projectSummary[$pid])) {
+                $projectSummary[$pid] = [
+                    'name' => optional($task->project)->project_name ?? 'Unknown',
+                    'total' => 0,
+                    'pending' => 0,
+                    'in_progress' => 0,
+                    'on_hold' => 0,
+                    'completed' => 0,
+                    'cancelled' => 0,
+                    'overdue' => 0,
+                    'delayed' => 0,
+                ];
+            }
+            $projectSummary[$pid]['total']++;
+            $projectSummary[$pid][$task->status]++;
+            if (in_array($delayStatus, ['delayed', 'overdue'], true)) {
+                $projectSummary[$pid][$delayStatus]++;
             }
 
             $rows[] = [
@@ -309,6 +330,14 @@ class AssignedTaskController extends Controller
 
         uasort($employeeDelayCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
 
+        foreach ($projectSummary as &$summary) {
+            $summary['completion_rate'] = $summary['total'] > 0
+                ? round(($summary['completed'] / $summary['total']) * 100)
+                : 0;
+        }
+        unset($summary);
+        uasort($projectSummary, fn ($a, $b) => $b['total'] <=> $a['total']);
+
         return view('tasks.progress_report', [
             'counts' => $counts,
             'totalTasks' => $totalTasks,
@@ -323,6 +352,7 @@ class AssignedTaskController extends Controller
             ],
             'employeeChartLabels' => array_map(fn ($e) => $e['name'], array_values($employeeDelayCounts)),
             'employeeChartData' => array_map(fn ($e) => $e['count'], array_values($employeeDelayCounts)),
+            'projectSummary' => $projectSummary,
             'rows' => $rows,
             'projects' => Project::orderBy('project_name')->get(),
             'employees' => $this->getEmployees(),

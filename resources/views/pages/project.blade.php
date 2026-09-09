@@ -110,6 +110,8 @@
                                 </form>
                                 <a href="{{ route('view_project_detail', $projectdata->id) }}"><i
                                         class="bx bx-show me-1"></i></a>
+                                <a href="{{ route('progress_report', ['project_id' => $projectdata->id]) }}"
+                                    title="Task Progress"><i class="bx bx-task me-1"></i></a>
                             </td>
                         </tr>
                     @empty
