@@ -15,43 +15,17 @@
         'not_due_yet' => 'Not Due Yet',
         'cancelled' => 'Cancelled',
     ];
-    $initials = collect(explode(' ', trim($employee->name)))->map(fn($w) => mb_substr($w, 0, 1))->take(2)->implode('');
-    $employmentBadge = $employee->employment_status === 'probation' ? 'bg-label-warning' : 'bg-label-success';
 @endphp
 
 <div class="container-xxl flex-grow-1 container-p-y">
     <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Task Management / Employee Report /</span>
-        {{ $employee->name }}
+        <span class="text-muted fw-light">Task Management /</span>
+        My Report
     </h4>
 
     <div class="card mb-4">
-        <div class="card-body d-flex align-items-center flex-wrap gap-3">
-            <div class="avatar avatar-lg">
-                <span class="avatar-initial rounded-circle bg-label-primary fs-4">{{ $initials }}</span>
-            </div>
-            <div class="flex-grow-1">
-                <h5 class="mb-1">{{ $employee->name }}</h5>
-                <div class="text-muted small">{{ $employee->email }}</div>
-                <div class="mt-1">
-                    @if ($employee->designation)
-                        <span class="badge bg-label-secondary">{{ $employee->designation }}</span>
-                    @endif
-                    @if ($employee->employment_status)
-                        <span class="badge {{ $employmentBadge }}">{{ ucfirst($employee->employment_status) }}</span>
-                    @endif
-                </div>
-            </div>
-            <a href="{{ route('employee_report') }}" class="btn btn-outline-secondary">
-                <i class="bx bx-arrow-back me-1"></i> Back to Employee Report
-            </a>
-        </div>
-    </div>
-
-    <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('employee_report.show', $employee->id) }}"
-                class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('my_report') }}" class="row g-3 align-items-end">
                 <div class="col-md-3 col-sm-6">
                     <label class="form-label fw-semibold">Range</label>
                     <select name="filter_type" id="filterType" class="form-select">

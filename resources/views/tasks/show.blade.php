@@ -5,6 +5,7 @@
         'pending' => 'Pending',
         'in_progress' => 'In Progress',
         'on_hold' => 'On Hold',
+        'testing' => 'Testing',
         'completed' => 'Completed',
         'cancelled' => 'Cancelled',
     ];
@@ -12,6 +13,7 @@
         'pending' => 'bg-label-secondary',
         'in_progress' => 'bg-label-primary',
         'on_hold' => 'bg-label-warning',
+        'testing' => 'bg-label-info',
         'completed' => 'bg-label-success',
         'cancelled' => 'bg-label-dark',
     ];
@@ -19,6 +21,7 @@
         'pending' => '#8592a3',
         'in_progress' => '#696cff',
         'on_hold' => '#ffab00',
+        'testing' => '#03c3ec',
         'completed' => '#71dd37',
         'cancelled' => '#233446',
     ];
@@ -144,10 +147,10 @@
                 </div>
             @endif
 
-            @if ($canEditThisTask)
+            @if ($canEditThisTask && $canEditStatus)
                 <div class="input-group input-group-sm" style="max-width: 320px;">
                     <select id="taskStatusSelect" class="form-select">
-                        @foreach ($statuses as $status)
+                        @foreach ($editableStatuses as $status)
                             <option value="{{ $status }}" {{ $task->status == $status ? 'selected' : '' }}>
                                 {{ $statusLabels[$status] }}
                             </option>
@@ -157,6 +160,11 @@
                         data-task-id="{{ $task->id }}">
                         <i class="bx bx-refresh me-1"></i> Update
                     </button>
+                </div>
+            @elseif ($canEditThisTask && ! $canEditStatus)
+                <div class="text-muted small">
+                    <i class="bx bx-lock-alt me-1"></i>
+                    This task has been completed — only an admin can change its status further.
                 </div>
             @endif
         </div>

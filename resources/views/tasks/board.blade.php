@@ -5,6 +5,7 @@
         'pending' => ['label' => 'Pending', 'badge' => 'bg-label-secondary', 'icon' => 'bx-list-ul', 'color' => '#8592a3'],
         'in_progress' => ['label' => 'In Progress', 'badge' => 'bg-label-primary', 'icon' => 'bx-loader-circle', 'color' => '#696cff'],
         'on_hold' => ['label' => 'On Hold', 'badge' => 'bg-label-warning', 'icon' => 'bx-pause-circle', 'color' => '#ffab00'],
+        'testing' => ['label' => 'Testing', 'badge' => 'bg-label-info', 'icon' => 'bx-search-alt', 'color' => '#03c3ec'],
         'completed' => ['label' => 'Completed', 'badge' => 'bg-label-success', 'icon' => 'bx-check-circle', 'color' => '#71dd37'],
         'cancelled' => ['label' => 'Cancelled', 'badge' => 'bg-label-dark', 'icon' => 'bx-x-circle', 'color' => '#233446'],
     ];

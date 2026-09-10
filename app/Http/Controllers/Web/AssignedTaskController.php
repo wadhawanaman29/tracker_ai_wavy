@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 
 class AssignedTaskController extends Controller
 {
-    private const STATUSES = ['pending', 'in_progress', 'on_hold', 'completed', 'cancelled'];
+    private const STATUSES = ['pending', 'in_progress', 'on_hold', 'testing', 'completed', 'cancelled'];
 
     // Keeps the live Kanban board's Completed/Cancelled columns from growing
     // unbounded as history piles up; the Delay Report has the full history.
@@ -188,11 +188,27 @@ class AssignedTaskController extends Controller
 
         $id->load(['project', 'assignedTo', 'assignedBy', 'statusLogs.changedBy']);
 
+        $hasEverBeenCompleted = $this->hasEverBeenCompleted($id);
+
         return view('tasks.show', [
             'task' => $id,
             'isAdmin' => $isAdmin,
             'statuses' => self::STATUSES,
+            'canEditStatus' => $isAdmin || ! $hasEverBeenCompleted,
+            'editableStatuses' => $id->status === 'completed' ? ['completed', 'testing'] : self::STATUSES,
         ]);
+    }
+
+    /**
+     * Whether this task is currently completed, or has ever been completed
+     * in its history (per TaskStatusLog — completed_at itself gets nulled
+     * out on any non-completed status, so it can't be used for this). Once
+     * true, only an admin may change the task's status again.
+     */
+    private function hasEverBeenCompleted(Task $task): bool
+    {
+        return $task->status === 'completed'
+            || TaskStatusLog::where('task_id', $task->id)->where('to_status', 'completed')->exists();
     }
 
     /**
@@ -216,6 +232,20 @@ class AssignedTaskController extends Controller
 
         $fromStatus = $id->status;
         $toStatus = $validated['status'];
+
+        if ($this->hasEverBeenCompleted($id) && ! $isAdmin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only an admin can change the status of a task that has already been completed.',
+            ], 403);
+        }
+
+        if ($fromStatus === 'completed' && $toStatus !== 'completed' && $toStatus !== 'testing') {
+            return response()->json([
+                'success' => false,
+                'message' => 'A completed task can only be moved to Testing.',
+            ], 422);
+        }
 
         $id->status = $toStatus;
         $id->completed_at = $toStatus === 'completed' ? now() : null;
@@ -357,6 +387,33 @@ class AssignedTaskController extends Controller
     }
 
     /**
+     * Self-service task report (employee only): the same delay/on-time
+     * breakdown as employeeReportShow(), but always scoped to the
+     * logged-in user — there is no user-suppliable ID here, so an
+     * employee can never view anyone else's report through this route.
+     */
+    public function myReport(Request $request)
+    {
+        $user = Auth::user();
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $tasks = Task::with('project')
+            ->where('assigned_to', $user->id)
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $report = $this->summarizeTasks($tasks);
+
+        return view('tasks.my_report', array_merge($report, [
+            'employee' => $user,
+            'filterType' => $filterType,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
+        ]));
+    }
+
+    /**
      * Resolves the filter_type/start_date/end_date query params into a
      * concrete [filterType, startDate, endDate] range shared by every
      * report page (Delay Report, Employee Report, single-employee report).
@@ -433,6 +490,7 @@ class AssignedTaskController extends Controller
                     'pending' => 0,
                     'in_progress' => 0,
                     'on_hold' => 0,
+                    'testing' => 0,
                     'completed' => 0,
                     'cancelled' => 0,
                     'overdue' => 0,

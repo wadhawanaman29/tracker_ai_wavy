@@ -189,6 +189,10 @@
                         <div class="text-muted small">On Hold</div>
                     </div>
                     <div class="col">
+                        <div class="fw-bold fs-5 text-info">{{ $p['testing'] }}</div>
+                        <div class="text-muted small">Testing</div>
+                    </div>
+                    <div class="col">
                         <div class="fw-bold fs-5 text-success">{{ $p['completed'] }}</div>
                         <div class="text-muted small">Completed</div>
                     </div>
@@ -222,6 +226,7 @@
                             <th>Pending</th>
                             <th>In Progress</th>
                             <th>On Hold</th>
+                            <th>Testing</th>
                             <th>Completed</th>
                             <th>Cancelled</th>
                             <th>Overdue</th>
@@ -238,6 +243,7 @@
                                 <td>{{ $p['pending'] }}</td>
                                 <td>{{ $p['in_progress'] }}</td>
                                 <td>{{ $p['on_hold'] }}</td>
+                                <td class="text-info">{{ $p['testing'] }}</td>
                                 <td class="text-success">{{ $p['completed'] }}</td>
                                 <td>{{ $p['cancelled'] }}</td>
                                 <td class="text-danger">{{ $p['overdue'] }}</td>

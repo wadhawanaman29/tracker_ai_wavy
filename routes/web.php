@@ -56,14 +56,14 @@ Route::group(['middleware' => 'DisbleBackBtn'], function () {
         Route::get('/get-project-tasks', [ProjectController::class, 'getProjectTasks']);
         Route::get('/get-project-tasks', [ProjectController::class, 'getProjectTasks']);
         Route::get('view_report', [ProjectController::class, 'reportData'])->name('view_report')->middleware('CheckRole:0');
-        Route::get('view_user_report', [ProjectController::class, 'view_user_report'])->name('view_user_report');
-        Route::get('view_project_report', [ProjectController::class, 'view_project_report'])->name('view_project_report');
+        Route::get('view_user_report', [ProjectController::class, 'view_user_report'])->name('view_user_report')->middleware('CheckRole:0');
+        Route::get('view_project_report', [ProjectController::class, 'view_project_report'])->name('view_project_report')->middleware('CheckRole:0');
         Route::get('viewuser/{id}', [ProjectController::class, 'viewuser'])->name('viewuser')->middleware('CheckRole:0');
         Route::get('view_project_detail/{id}', [ProjectController::class, 'viewProjectDetails'])->name('view_project_detail');
-        Route::get('view_employee_full_report/{id}', [ProjectController::class, 'viewEmployeeFullReport'])->name('view_employee_full_report');
+        Route::get('view_employee_full_report/{id}', [ProjectController::class, 'viewEmployeeFullReport'])->name('view_employee_full_report')->middleware('CheckRole:0');
         Route::get('list_report', [ProjectController::class, 'listReport'])->name('list_report')->middleware('CheckRole:0');
         Route::get('report', [ProjectController::class, 'generate'])->name('generate')->middleware('CheckRole:0');
-        Route::get('/report/{user_id}', [ProjectController::class, 'report'])->name('report');
+        Route::get('/report/{user_id}', [ProjectController::class, 'report'])->name('report')->middleware('CheckRole:0');
         Route::post('/employee', [ProjectController::class, 'employee'])->name('employee');
         Route::post('/employeedata', [ProjectController::class, 'employeedata'])->name('employeedata');
 
@@ -126,6 +126,7 @@ Route::group(['middleware' => 'DisbleBackBtn'], function () {
         Route::get('progress_report', [AssignedTaskController::class, 'progress_report'])->name('progress_report')->middleware('CheckRole:0');
         Route::get('employee_report', [AssignedTaskController::class, 'employeeReport'])->name('employee_report')->middleware('CheckRole:0');
         Route::get('employee_report/{user}', [AssignedTaskController::class, 'employeeReportShow'])->name('employee_report.show')->middleware('CheckRole:0');
+        Route::get('my_report', [AssignedTaskController::class, 'myReport'])->name('my_report')->middleware('CheckRole:1');
         Route::put('assigned_task/{id}/status', [AssignedTaskController::class, 'updateStatus'])->name('assigned.status.update')->middleware('CheckRole:0,1');
         Route::delete('assigned_task/delete/{id}', [AssignedTaskController::class, 'destroy'])->name('assigned_task_delete')->middleware('CheckRole:0');
     });

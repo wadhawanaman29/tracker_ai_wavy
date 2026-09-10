@@ -393,6 +393,13 @@
                             </a>
                         </li>
 
+                        <li class="menu-item {{ request()->is('my_report') ? 'active' : '' }}">
+                            <a href="{{ route('my_report') }}" class="menu-link">
+                                <i class="menu-icon tf-icons bx bx-line-chart"></i>
+                                <div data-i18n="Layouts">My Report</div>
+                            </a>
+                        </li>
+
                         <li
                             class="menu-item {{ request()->is('self_attendence', 'attendence_report') ? 'active' : '' }}">
                             <a href="javascript:void(0);" class="menu-link menu-toggle">
