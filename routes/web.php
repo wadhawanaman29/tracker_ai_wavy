@@ -129,5 +129,14 @@ Route::group(['middleware' => 'DisbleBackBtn'], function () {
         Route::get('my_report', [AssignedTaskController::class, 'myReport'])->name('my_report')->middleware('CheckRole:1');
         Route::put('assigned_task/{id}/status', [AssignedTaskController::class, 'updateStatus'])->name('assigned.status.update')->middleware('CheckRole:0,1');
         Route::delete('assigned_task/delete/{id}', [AssignedTaskController::class, 'destroy'])->name('assigned_task_delete')->middleware('CheckRole:0');
+        Route::get('/progress-report/projects', [AssignedTaskController::class, 'progressReportProjectsAjax'])
+            ->name('progress_report.projects');
+        Route::get('/progress-report/tasks', [AssignedTaskController::class, 'progressReportTasksAjax'])
+            ->name('progress_report.tasks');
+        Route::get('progress_report/tasks_ajax', [AssignedTaskController::class, 'progressReportTasksAjax'])
+            ->name('progress_report.tasks_ajax')
+            ->middleware('CheckRole:0');
+            Route::get('/my-report/tasks',    [AssignedTaskController::class, 'myReportTasksAjax'])->name('my_report.tasks');
+Route::get('/my-report/projects', [AssignedTaskController::class, 'myReportProjectsAjax'])->name('my_report.projects');
     });
 });

@@ -15,15 +15,8 @@ use Illuminate\Support\Facades\Auth;
 class AssignedTaskController extends Controller
 {
     private const STATUSES = ['pending', 'in_progress', 'on_hold', 'testing', 'completed', 'cancelled'];
-
-    // Keeps the live Kanban board's Completed/Cancelled columns from growing
-    // unbounded as history piles up; the Delay Report has the full history.
     private const BOARD_DONE_LOOKBACK_DAYS = 30;
     private const BOARD_DONE_LIMIT = 50;
-
-    /**
-     * Show the create-task form (admin only).
-     */
     public function assignedTask()
     {
         return view('tasks.form', [
@@ -33,9 +26,7 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Show the edit-task form (admin only).
-     */
+
     public function edit(Task $id)
     {
         return view('tasks.form', [
@@ -45,9 +36,7 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Create a task (admin only).
-     */
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -80,9 +69,7 @@ class AssignedTaskController extends Controller
         return redirect()->route('assigned_task_list')->with('success', 'Task created successfully.');
     }
 
-    /**
-     * Update a task's details (admin only).
-     */
+
     public function update(Request $request, Task $id)
     {
         $validated = $request->validate([
@@ -111,10 +98,7 @@ class AssignedTaskController extends Controller
             ->with('success', 'Task updated successfully.');
     }
 
-    /**
-     * The Kanban board. Admin sees every task (optionally filtered), an
-     * employee only sees their own.
-     */
+
     public function assignedTaskList(Request $request)
     {
         $isAdmin = Auth::user()->user_type == '0';
@@ -137,10 +121,6 @@ class AssignedTaskController extends Controller
 
         $tasks = $query->orderBy('due_date', 'asc')->get();
 
-        // Pending/in-progress/on-hold are naturally bounded by current
-        // workload, but completed/cancelled tasks accumulate forever — cap
-        // the live board to a recent window so a column can't grow into
-        // hundreds of stale cards (full history is in the Delay Report).
         $doneCutoff = now()->subDays(self::BOARD_DONE_LOOKBACK_DAYS);
 
         $tasksByStatus = [];
@@ -150,7 +130,7 @@ class AssignedTaskController extends Controller
 
             if (in_array($status, ['completed', 'cancelled'], true)) {
                 $recentTasks = $statusTasks
-                    ->filter(fn ($t) => $t->updated_at && $t->updated_at->gte($doneCutoff))
+                    ->filter(fn($t) => $t->updated_at && $t->updated_at->gte($doneCutoff))
                     ->sortByDesc('updated_at');
 
                 $doneColumnCapped[$status] = $recentTasks->count() > self::BOARD_DONE_LIMIT
@@ -175,9 +155,6 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Task detail: meta, status changer, status history.
-     */
     public function show(Task $id)
     {
         $isAdmin = Auth::user()->user_type == '0';
@@ -199,22 +176,13 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Whether this task is currently completed, or has ever been completed
-     * in its history (per TaskStatusLog — completed_at itself gets nulled
-     * out on any non-completed status, so it can't be used for this). Once
-     * true, only an admin may change the task's status again.
-     */
+
     private function hasEverBeenCompleted(Task $task): bool
     {
         return $task->status === 'completed'
             || TaskStatusLog::where('task_id', $task->id)->where('to_status', 'completed')->exists();
     }
 
-    /**
-     * Move a task between statuses. Called via AJAX from the Kanban board
-     * (drag-and-drop) and the task detail page's status control.
-     */
     public function updateStatus(Request $request, Task $id)
     {
         $isAdmin = Auth::user()->user_type == '0';
@@ -271,9 +239,7 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Delete a task (its status logs cascade via the FK).
-     */
+
     public function destroy(Task $id)
     {
         $id->delete();
@@ -281,26 +247,10 @@ class AssignedTaskController extends Controller
         return redirect()->route('assigned_task_list')->with('success', 'Task deleted successfully.');
     }
 
-    /**
-     * Admin delay/on-time report across tasks, for a filterable
-     * employee/project/date-range slice.
-     */
+
     public function progress_report(Request $request)
     {
-        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
-
-        $selectedEmployeeId = $request->get('employee_id', 'all');
-        $selectedProjectId = $request->get('project_id', 'all');
-
-        $query = Task::with(['project', 'assignedTo'])
-            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()]);
-
-        if ($selectedEmployeeId !== 'all') {
-            $query->where('assigned_to', $selectedEmployeeId);
-        }
-        if ($selectedProjectId !== 'all') {
-            $query->where('project_id', $selectedProjectId);
-        }
+        [$query, $filterType, $startDate, $endDate, $selectedEmployeeId, $selectedProjectId] = $this->progressReportQuery($request);
 
         $tasks = $query->orderBy('due_date', 'asc')->get();
         $report = $this->summarizeTasks($tasks);
@@ -316,11 +266,65 @@ class AssignedTaskController extends Controller
         ]));
     }
 
-    /**
-     * Employee Report directory (admin only): every employee's task
-     * completion/delay summary for the selected date range, each linking
-     * into their own single-employee report.
-     */
+    public function progressReportTasksAjax(Request $request)
+    {
+        [$query] = $this->progressReportQuery($request);
+
+        $tasks = $query->orderBy('due_date', 'asc')->get();
+
+        $search  = strtolower(trim($request->get('search', '')));
+        $status  = $request->get('delay_status', 'all');
+        $sortBy  = $request->get('sort_by');
+        $sortDir = $request->get('sort_dir') === 'desc' ? 'desc' : 'asc';
+        $page    = max(1, (int) $request->get('page', 1));
+        $perPage = 5;
+
+        $rows = $tasks->map(function ($task) {
+            return [
+                'title'        => $task->title,
+                'project'      => optional($task->project)->project_name ?? '-',
+                'assignee'     => optional($task->assignedTo)->name ?? '-',
+                'due_date'     => optional($task->due_date)->format('d-m-Y'),
+                'due_sort'     => optional($task->due_date)->format('Y-m-d'),
+                'completed_at' => $task->completed_at ? $task->completed_at->format('d-m-Y') : '-',
+                'status'       => $task->status,
+                'status_label' => ucfirst(str_replace('_', ' ', $task->status)),
+                'delay_status' => $this->classifyTaskDelay($task),
+            ];
+        });
+
+        if ($status !== 'all') {
+            $rows = $rows->where('delay_status', $status);
+        }
+
+        if ($search !== '') {
+            $rows = $rows->filter(
+                fn($row) =>
+                str_contains(strtolower($row['title']), $search) ||
+                    str_contains(strtolower($row['project']), $search) ||
+                    str_contains(strtolower($row['assignee']), $search)
+            );
+        }
+
+        $sortMap = ['title' => 'title', 'project' => 'project', 'assignee' => 'assignee', 'due' => 'due_sort', 'delay' => 'delay_status'];
+        if ($sortBy && isset($sortMap[$sortBy])) {
+            $rows = $sortDir === 'desc' ? $rows->sortByDesc($sortMap[$sortBy]) : $rows->sortBy($sortMap[$sortBy]);
+        }
+
+        $rows     = $rows->values();
+        $total    = $rows->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page     = min($page, $lastPage);
+
+        return response()->json([
+            'data'         => $rows->forPage($page, $perPage)->values(),
+            'current_page' => $page,
+            'last_page'    => $lastPage,
+            'total'        => $total,
+            'per_page'     => $perPage,
+        ]);
+    }
+
     public function employeeReport(Request $request)
     {
         [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
@@ -361,11 +365,7 @@ class AssignedTaskController extends Controller
         ]);
     }
 
-    /**
-     * Single-employee task report (admin only): the same delay/on-time
-     * breakdown as progress_report(), locked to one employee with a
-     * profile-style header.
-     */
+
     public function employeeReportShow(Request $request, User $user)
     {
         [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
@@ -386,12 +386,7 @@ class AssignedTaskController extends Controller
         ]));
     }
 
-    /**
-     * Self-service task report (employee only): the same delay/on-time
-     * breakdown as employeeReportShow(), but always scoped to the
-     * logged-in user — there is no user-suppliable ID here, so an
-     * employee can never view anyone else's report through this route.
-     */
+
     public function myReport(Request $request)
     {
         $user = Auth::user();
@@ -413,11 +408,7 @@ class AssignedTaskController extends Controller
         ]));
     }
 
-    /**
-     * Resolves the filter_type/start_date/end_date query params into a
-     * concrete [filterType, startDate, endDate] range shared by every
-     * report page (Delay Report, Employee Report, single-employee report).
-     */
+
     private function resolveDateRange(Request $request): array
     {
         $filterType = $request->get('filter_type', 'this_month');
@@ -454,12 +445,6 @@ class AssignedTaskController extends Controller
         return [$filterType, $startDate, $endDate];
     }
 
-    /**
-     * Builds the shared delay-report dataset (status counts, per-employee
-     * delay counts, per-project rollup, detail rows) from any task
-     * collection — used for both the all-tasks Delay Report and a single
-     * employee's report.
-     */
     private function summarizeTasks($tasks): array
     {
         $counts = ['on_time' => 0, 'delayed' => 0, 'overdue' => 0, 'not_due_yet' => 0, 'cancelled' => 0];
@@ -518,7 +503,7 @@ class AssignedTaskController extends Controller
         $completedTasks = $tasks->where('status', 'completed')->count();
         $completionRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
 
-        uasort($employeeDelayCounts, fn ($a, $b) => $b['count'] <=> $a['count']);
+        uasort($employeeDelayCounts, fn($a, $b) => $b['count'] <=> $a['count']);
 
         foreach ($projectSummary as &$summary) {
             $summary['completion_rate'] = $summary['total'] > 0
@@ -526,7 +511,7 @@ class AssignedTaskController extends Controller
                 : 0;
         }
         unset($summary);
-        uasort($projectSummary, fn ($a, $b) => $b['total'] <=> $a['total']);
+        uasort($projectSummary, fn($a, $b) => $b['total'] <=> $a['total']);
 
         return [
             'counts' => $counts,
@@ -540,18 +525,14 @@ class AssignedTaskController extends Controller
                 $counts['not_due_yet'],
                 $counts['cancelled'],
             ],
-            'employeeChartLabels' => array_map(fn ($e) => $e['name'], array_values($employeeDelayCounts)),
-            'employeeChartData' => array_map(fn ($e) => $e['count'], array_values($employeeDelayCounts)),
+            'employeeChartLabels' => array_map(fn($e) => $e['name'], array_values($employeeDelayCounts)),
+            'employeeChartData' => array_map(fn($e) => $e['count'], array_values($employeeDelayCounts)),
             'projectSummary' => $projectSummary,
             'rows' => $rows,
         ];
     }
 
-    /**
-     * Due-date based delay classification, per the confirmed policy:
-     * completed after due date = delayed, still open past due date =
-     * overdue, completed on/before due date = on time.
-     */
+
     private function classifyTaskDelay(Task $task): string
     {
         if ($task->status === 'cancelled') {
@@ -569,8 +550,7 @@ class AssignedTaskController extends Controller
 
     private function getEmployees()
     {
-        // Matches UserController::users()' active-employee filter: exclude
-        // admins, deactivated employees, and soft-deleted ones (delete_status).
+
         return User::where('user_type', '1')
             ->where('user_status', '!=', '0')
             ->where('delete_status', '!=', '1')
@@ -585,5 +565,165 @@ class AssignedTaskController extends Controller
         if ($assignee) {
             $assignee->notify(new TaskAssignedNotification($task));
         }
+    }
+
+
+    private function progressReportQuery(Request $request)
+    {
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $selectedEmployeeId = $request->get('employee_id', 'all');
+        $selectedProjectId = $request->get('project_id', 'all');
+
+        $query = Task::with(['project', 'assignedTo'])
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()]);
+
+        if ($selectedEmployeeId !== 'all') {
+            $query->where('assigned_to', $selectedEmployeeId);
+        }
+        if ($selectedProjectId !== 'all') {
+            $query->where('project_id', $selectedProjectId);
+        }
+
+        return [$query, $filterType, $startDate, $endDate, $selectedEmployeeId, $selectedProjectId];
+    }
+
+    public function progressReportProjectsAjax(Request $request)
+    {
+        [$query] = $this->progressReportQuery($request);
+
+        $tasks = $query->orderBy('due_date', 'asc')->get();
+        $report = $this->summarizeTasks($tasks);
+
+        $search  = strtolower(trim($request->get('search', '')));
+        $page    = max(1, (int) $request->get('page', 1));
+        $perPage = 5;
+
+        $projects = collect($report['projectSummary'])->values();
+
+        if ($search !== '') {
+            $projects = $projects->filter(
+                fn($p) =>
+                str_contains(strtolower($p['name']), $search)
+            );
+        }
+
+        $projects = $projects->values();
+        $total    = $projects->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page     = min($page, $lastPage);
+
+        return response()->json([
+            'data'         => $projects->forPage($page, $perPage)->values(),
+            'current_page' => $page,
+            'last_page'    => $lastPage,
+            'total'        => $total,
+            'per_page'     => $perPage,
+        ]);
+    }
+
+
+    public function myReportTasksAjax(Request $request)
+    {
+        $user = Auth::user();
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $tasks = Task::with(['project', 'assignedTo'])
+            ->where('assigned_to', $user->id)
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $search  = strtolower(trim($request->get('search', '')));
+        $status  = $request->get('delay_status', 'all');
+        $sortBy  = $request->get('sort_by');
+        $sortDir = $request->get('sort_dir') === 'desc' ? 'desc' : 'asc';
+        $page    = max(1, (int) $request->get('page', 1));
+        $perPage = max(1, min(10000, (int) $request->get('per_page', 5)));
+
+        $rows = $tasks->map(function ($task) {
+            return [
+                'title'        => $task->title,
+                'project'      => optional($task->project)->project_name ?? '-',
+                'due_date'     => optional($task->due_date)->format('d-m-Y'),
+                'due_sort'     => optional($task->due_date)->format('Y-m-d'),
+                'completed_at' => $task->completed_at ? $task->completed_at->format('d-m-Y') : '-',
+                'status'       => $task->status,
+                'status_label' => ucfirst(str_replace('_', ' ', $task->status)),
+                'delay_status' => $this->classifyTaskDelay($task),
+            ];
+        });
+
+        if ($status !== 'all') {
+            $rows = $rows->where('delay_status', $status);
+        }
+
+        if ($search !== '') {
+            $rows = $rows->filter(
+                fn($row) =>
+                str_contains(strtolower($row['title']), $search) ||
+                    str_contains(strtolower($row['project']), $search)
+            );
+        }
+
+        $sortMap = ['title' => 'title', 'project' => 'project', 'due' => 'due_sort', 'delay' => 'delay_status'];
+        if ($sortBy && isset($sortMap[$sortBy])) {
+            $rows = $sortDir === 'desc'
+                ? $rows->sortByDesc($sortMap[$sortBy])
+                : $rows->sortBy($sortMap[$sortBy]);
+        }
+
+        $rows     = $rows->values();
+        $total    = $rows->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page     = min($page, $lastPage);
+
+        return response()->json([
+            'data'         => $rows->forPage($page, $perPage)->values(),
+            'current_page' => $page,
+            'last_page'    => $lastPage,
+            'total'        => $total,
+            'per_page'     => $perPage,
+        ]);
+    }
+
+
+    public function myReportProjectsAjax(Request $request)
+    {
+        $user = Auth::user();
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $tasks = Task::with(['project', 'assignedTo'])
+            ->where('assigned_to', $user->id)
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $report   = $this->summarizeTasks($tasks);
+        $projects = collect($report['projectSummary'])->values();
+
+        $search  = strtolower(trim($request->get('search', '')));
+        $page    = max(1, (int) $request->get('page', 1));
+        $perPage = max(1, min(10000, (int) $request->get('per_page', 5)));
+
+        if ($search !== '') {
+            $projects = $projects->filter(
+                fn($p) =>
+                str_contains(strtolower($p['name']), $search)
+            );
+        }
+
+        $projects = $projects->values();
+        $total    = $projects->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page     = min($page, $lastPage);
+
+        return response()->json([
+            'data'         => $projects->forPage($page, $perPage)->values(),
+            'current_page' => $page,
+            'last_page'    => $lastPage,
+            'total'        => $total,
+            'per_page'     => $perPage,
+        ]);
     }
 }
