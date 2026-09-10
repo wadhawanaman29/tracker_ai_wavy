@@ -124,6 +124,8 @@ Route::group(['middleware' => 'DisbleBackBtn'], function () {
         Route::get('assigned_task_edit/{id}', [AssignedTaskController::class, 'edit'])->name('assigned.edit')->middleware('CheckRole:0');
         Route::put('assigned_task/{id}', [AssignedTaskController::class, 'update'])->name('assigned_task.update')->middleware('CheckRole:0');
         Route::get('progress_report', [AssignedTaskController::class, 'progress_report'])->name('progress_report')->middleware('CheckRole:0');
+        Route::get('employee_report', [AssignedTaskController::class, 'employeeReport'])->name('employee_report')->middleware('CheckRole:0');
+        Route::get('employee_report/{user}', [AssignedTaskController::class, 'employeeReportShow'])->name('employee_report.show')->middleware('CheckRole:0');
         Route::put('assigned_task/{id}/status', [AssignedTaskController::class, 'updateStatus'])->name('assigned.status.update')->middleware('CheckRole:0,1');
         Route::delete('assigned_task/delete/{id}', [AssignedTaskController::class, 'destroy'])->name('assigned_task_delete')->middleware('CheckRole:0');
     });
