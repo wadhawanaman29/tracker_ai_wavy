@@ -257,6 +257,112 @@ class AssignedTaskController extends Controller
      */
     public function progress_report(Request $request)
     {
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $selectedEmployeeId = $request->get('employee_id', 'all');
+        $selectedProjectId = $request->get('project_id', 'all');
+
+        $query = Task::with(['project', 'assignedTo'])
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()]);
+
+        if ($selectedEmployeeId !== 'all') {
+            $query->where('assigned_to', $selectedEmployeeId);
+        }
+        if ($selectedProjectId !== 'all') {
+            $query->where('project_id', $selectedProjectId);
+        }
+
+        $tasks = $query->orderBy('due_date', 'asc')->get();
+        $report = $this->summarizeTasks($tasks);
+
+        return view('tasks.progress_report', array_merge($report, [
+            'projects' => Project::orderBy('project_name')->get(),
+            'employees' => $this->getEmployees(),
+            'selectedEmployeeId' => $selectedEmployeeId,
+            'selectedProjectId' => $selectedProjectId,
+            'filterType' => $filterType,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
+        ]));
+    }
+
+    /**
+     * Employee Report directory (admin only): every employee's task
+     * completion/delay summary for the selected date range, each linking
+     * into their own single-employee report.
+     */
+    public function employeeReport(Request $request)
+    {
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $tasks = Task::whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])->get();
+
+        $summaries = $this->getEmployees()->map(function ($employee) use ($tasks) {
+            $employeeTasks = $tasks->where('assigned_to', $employee->id);
+            $total = $employeeTasks->count();
+            $completed = $employeeTasks->where('status', 'completed')->count();
+            $delayed = 0;
+            $overdue = 0;
+
+            foreach ($employeeTasks as $task) {
+                $delayStatus = $this->classifyTaskDelay($task);
+                if ($delayStatus === 'delayed') {
+                    $delayed++;
+                } elseif ($delayStatus === 'overdue') {
+                    $overdue++;
+                }
+            }
+
+            return [
+                'employee' => $employee,
+                'total' => $total,
+                'completed' => $completed,
+                'completion_rate' => $total > 0 ? round(($completed / $total) * 100) : 0,
+                'delayed' => $delayed,
+                'overdue' => $overdue,
+            ];
+        });
+
+        return view('tasks.employee_report', [
+            'summaries' => $summaries,
+            'filterType' => $filterType,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
+        ]);
+    }
+
+    /**
+     * Single-employee task report (admin only): the same delay/on-time
+     * breakdown as progress_report(), locked to one employee with a
+     * profile-style header.
+     */
+    public function employeeReportShow(Request $request, User $user)
+    {
+        [$filterType, $startDate, $endDate] = $this->resolveDateRange($request);
+
+        $tasks = Task::with('project')
+            ->where('assigned_to', $user->id)
+            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        $report = $this->summarizeTasks($tasks);
+
+        return view('tasks.employee_report_show', array_merge($report, [
+            'employee' => $user,
+            'filterType' => $filterType,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
+        ]));
+    }
+
+    /**
+     * Resolves the filter_type/start_date/end_date query params into a
+     * concrete [filterType, startDate, endDate] range shared by every
+     * report page (Delay Report, Employee Report, single-employee report).
+     */
+    private function resolveDateRange(Request $request): array
+    {
         $filterType = $request->get('filter_type', 'this_month');
 
         switch ($filterType) {
@@ -288,21 +394,17 @@ class AssignedTaskController extends Controller
                 break;
         }
 
-        $selectedEmployeeId = $request->get('employee_id', 'all');
-        $selectedProjectId = $request->get('project_id', 'all');
+        return [$filterType, $startDate, $endDate];
+    }
 
-        $query = Task::with(['project', 'assignedTo'])
-            ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()]);
-
-        if ($selectedEmployeeId !== 'all') {
-            $query->where('assigned_to', $selectedEmployeeId);
-        }
-        if ($selectedProjectId !== 'all') {
-            $query->where('project_id', $selectedProjectId);
-        }
-
-        $tasks = $query->orderBy('due_date', 'asc')->get();
-
+    /**
+     * Builds the shared delay-report dataset (status counts, per-employee
+     * delay counts, per-project rollup, detail rows) from any task
+     * collection — used for both the all-tasks Delay Report and a single
+     * employee's report.
+     */
+    private function summarizeTasks($tasks): array
+    {
         $counts = ['on_time' => 0, 'delayed' => 0, 'overdue' => 0, 'not_due_yet' => 0, 'cancelled' => 0];
         $employeeDelayCounts = [];
         $projectSummary = [];
@@ -368,7 +470,7 @@ class AssignedTaskController extends Controller
         unset($summary);
         uasort($projectSummary, fn ($a, $b) => $b['total'] <=> $a['total']);
 
-        return view('tasks.progress_report', [
+        return [
             'counts' => $counts,
             'totalTasks' => $totalTasks,
             'completionRate' => $completionRate,
@@ -384,14 +486,7 @@ class AssignedTaskController extends Controller
             'employeeChartData' => array_map(fn ($e) => $e['count'], array_values($employeeDelayCounts)),
             'projectSummary' => $projectSummary,
             'rows' => $rows,
-            'projects' => Project::orderBy('project_name')->get(),
-            'employees' => $this->getEmployees(),
-            'selectedEmployeeId' => $selectedEmployeeId,
-            'selectedProjectId' => $selectedProjectId,
-            'filterType' => $filterType,
-            'startDate' => $startDate->format('Y-m-d'),
-            'endDate' => $endDate->format('Y-m-d'),
-        ]);
+        ];
     }
 
     /**

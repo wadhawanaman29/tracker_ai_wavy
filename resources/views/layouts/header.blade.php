@@ -121,7 +121,7 @@
                         </li>
 
                         <li
-                            class="menu-item {{ request()->is('assigned_task', 'assigned_task_list', 'assigned_task_view/*', 'assigned_task_edit/*', 'progress_report') ? 'active' : '' }}">
+                            class="menu-item {{ request()->is('assigned_task', 'assigned_task_list', 'assigned_task_view/*', 'assigned_task_edit/*', 'progress_report', 'employee_report', 'employee_report/*') ? 'active' : '' }}">
                             <a href="javascript:void(0);" class="menu-link menu-toggle">
                                 <i class="menu-icon tf-icons bx bx-task"></i>
                                 <div data-i18n="Layouts">Task Management</div>
@@ -141,6 +141,12 @@
                                 <li class="menu-item {{ request()->is('progress_report') ? 'active' : '' }}">
                                     <a href="{{ route('progress_report') }}" class="menu-link">
                                         <div data-i18n="Without menu">Delay Report</div>
+                                    </a>
+                                </li>
+                                <li
+                                    class="menu-item {{ request()->is('employee_report', 'employee_report/*') ? 'active' : '' }}">
+                                    <a href="{{ route('employee_report') }}" class="menu-link">
+                                        <div data-i18n="Without menu">Employee Report</div>
                                     </a>
                                 </li>
                             </ul>
